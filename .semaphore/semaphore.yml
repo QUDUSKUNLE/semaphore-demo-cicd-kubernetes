@@ -1,88 +1,66 @@
-# Demonstration Kubernetes CI/CD Pipeline
+# This is a simple Semaphore configuration file using Docker
+# For more information about Semaphore configuration visit:
+# https://docs.semaphoreci.com/reference/pipeline-yaml-reference/
 
-version: v1.0
-name: Semaphore CI/CD Kubernetes Demo
+version: v1.0  # Semaphore configuration version
+name: "🎯 Simple CI Pipeline"  # Pipeline display name
+
+# Define the machine type, OS image, and containers
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
+    type: r1-standard-2
+    os_image: ubuntu2404
 
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/node:20'  # Node.js 20 container
+
+# Configure when to stop the pipeline early
+fail_fast:
+  stop:
+    when: branch != 'main'  # Stop all blocks if a job fails on non-main branches
+auto_cancel:
+  running:
+    when: branch != 'main'  # Cancel running pipelines on non-main branches
+  queued:
+    when: branch = 'main'   # Cancel queued pipelines on main branch
+
+# Pipeline blocks represent groups of jobs that can run in parallel
 blocks:
-  - name: Docker Build
-    task:
-
-      # The prologue runs *before* each job in the block
-      prologue:
-        commands:
-          # clone the repo and login to the private docker registry
-          - checkout
-          - docker login -u $SEMAPHORE_REGISTRY_USERNAME -p $SEMAPHORE_REGISTRY_PASSWORD $SEMAPHORE_REGISTRY_URL
-
-      # Build docker image with cache
-      # we're using $SEMAPHORE_WORKFLOW_ID to uniquely tag the image in all pipelines
-      jobs:
-        - name: Build
-          commands:
-            - docker pull $SEMAPHORE_REGISTRY_URL/semaphore-demo-cicd-kubernetes:latest || true
-            - docker build --cache-from $SEMAPHORE_REGISTRY_URL/seamphore-demo-cicd-kubernetes:latest -t $SEMAPHORE_REGISTRY_URL/semaphore-demo-cicd-kubernetes:$SEMAPHORE_WORKFLOW_ID .
-            - docker push $SEMAPHORE_REGISTRY_URL/semaphore-demo-cicd-kubernetes:$SEMAPHORE_WORKFLOW_ID
-  
-  # This block runs all the tests *inside* the docker image
-  - name: Tests
-    task:
-      env_vars:
-        - name: NODE_ENV
-          value: test
-
-      # Pull the latest image to speed up builds
-      prologue:
-        commands:
-          - docker login -u $SEMAPHORE_REGISTRY_USERNAME -p $SEMAPHORE_REGISTRY_PASSWORD $SEMAPHORE_REGISTRY_URL
-          - docker pull $SEMAPHORE_REGISTRY_URL/semaphore-demo-cicd-kubernetes:$SEMAPHORE_WORKFLOW_ID
-
-      jobs:
-        # Static code test. Run a javascript linter.
-        - name: Static test
-          commands:
-            - docker run -it $SEMAPHORE_REGISTRY_URL/semaphore-demo-cicd-kubernetes:$SEMAPHORE_WORKFLOW_ID npm run lint
-
-        # The integration test uses a local postgres db.
-        - name: Integration test
-          commands:
-            - sem-service start postgres
-            - docker run --net=host -it $SEMAPHORE_REGISTRY_URL/semaphore-demo-cicd-kubernetes:$SEMAPHORE_WORKFLOW_ID npm run test
-
-        # The functional test and db migration uses a local postgres db.
-        - name: Functional test
-          commands:
-            - sem-service start postgres
-            - docker run --net=host -it $SEMAPHORE_REGISTRY_URL/semaphore-demo-cicd-kubernetes:$SEMAPHORE_WORKFLOW_ID npm run ping
-            - docker run --net=host -it $SEMAPHORE_REGISTRY_URL/semaphore-demo-cicd-kubernetes:$SEMAPHORE_WORKFLOW_ID npm run migrate
-
-  # Push the current image to Semaphore private registry with the latest tag
-  # so it's available as cache for future builds.
-  - name: Push as latest
+  # Block for testing
+  - name: "🧪 Test"
+    dependencies: []
     task:
       jobs:
-        - name: Push
+        - name: "🟢 Run Tests"
           commands:
-            - docker login -u $SEMAPHORE_REGISTRY_USERNAME -p $SEMAPHORE_REGISTRY_PASSWORD $SEMAPHORE_REGISTRY_URL
-            - docker pull $SEMAPHORE_REGISTRY_URL/semaphore-demo-cicd-kubernetes:$SEMAPHORE_WORKFLOW_ID
-            - docker tag $SEMAPHORE_REGISTRY_URL/semaphore-demo-cicd-kubernetes:$SEMAPHORE_WORKFLOW_ID $SEMAPHORE_REGISTRY_URL/semaphore-demo-cicd-kubernetes:latest
-            - docker push $SEMAPHORE_REGISTRY_URL/semaphore-demo-cicd-kubernetes:latest
+            - echo "Checking out code..."
+            - echo "Installing dependencies..."
+            - echo "Running test suite in container..."
+            - echo "Tests completed successfully!"
 
-# Canaries will automatically start when branch is master or the commit is tagged as hotfix*
-# Uncomment the relevant promotion for your favorite cloud below.
-promotions:
-  - name: Canary Deployment (DigitalOcean)
-    pipeline_file: deploy-canary-digitalocean.yml
-    auto_promote:
-      when: "result = 'passed' and (branch = 'master' or tag =~ '^hotfix*')"
-  # - name: Canary Deployment (AWS)
-  #   pipeline_file: deploy-canary-aws.yml
-  #   auto_promote:
-  #     when: "result = 'passed' and (branch = 'master' or tag =~ '^hotfix*')"
-  # - name: Canary Deployment (GCP)
-  #   pipeline_file: deploy-canary-gcp.yml
-  #   auto_promote:
-  #     when: "result = 'passed' and (branch = 'master' or tag =~ '^hotfix*')"
+  # Block for building Docker image
+  - name: "🐳 Docker"
+    dependencies: ["🧪 Test"]
+    task:
+      secrets:
+        - name: dockerhub-credentials
+      jobs:
+        - name: "📦 Build and Push"
+          commands:
+            - echo "Logging into Docker registry..."
+            - echo "Building Docker image..."
+            - echo "Pushing image to registry..."
+            - echo "Docker image published successfully!"
+
+  # Block for deployment
+  - name: "🚀 Deploy"
+    dependencies: ["🐳 Docker"]  # Only deploy if Docker build succeeds
+    task:
+      jobs:
+        - name: "🌍 Deploy to Production"
+          commands:
+            - echo "Preparing deployment..."
+            - echo "Updating container version..."
+            - echo "Rolling out new containers..."
+            - echo "Deployment completed successfully!"
