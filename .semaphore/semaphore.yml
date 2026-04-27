@@ -2,10 +2,11 @@
 
 version: v1.0
 name: Semaphore CI/CD Kubernetes Demo
-# agent:
-#   machine:
-#     type: e1-standard-2
-#     os_image: ubuntu2004
+agent:
+  machine:
+    type: e2-medium
+    os_image: ubuntu2004
+    
 
 blocks:
   - name: Docker Build
@@ -24,7 +25,7 @@ blocks:
         - name: Build
           commands:
             - docker pull $SEMAPHORE_REGISTRY_URL/semaphore-demo-cicd-kubernetes:latest || true
-            - docker build --cache-from $SEMAPHORE_REGISTRY_URL/seamphore-demo-cicd-kubernetes:latest -t $SEMAPHORE_REGISTRY_URL/semaphore-demo-cicd-kubernetes:$SEMAPHORE_WORKFLOW_ID .
+            - docker build --cache-from $SEMAPHORE_REGISTRY_URL/semaphore-demo-cicd-kubernetes:latest -t $SEMAPHORE_REGISTRY_URL/semaphore-demo-cicd-kubernetes:$SEMAPHORE_WORKFLOW_ID .
             - docker push $SEMAPHORE_REGISTRY_URL/semaphore-demo-cicd-kubernetes:$SEMAPHORE_WORKFLOW_ID
   
   # This block runs all the tests *inside* the docker image
