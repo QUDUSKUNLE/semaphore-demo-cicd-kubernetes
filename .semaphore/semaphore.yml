@@ -4,8 +4,7 @@ version: v1.0
 name: Semaphore CI/CD Kubernetes Demo
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu1804
+    type: r1-standard-2
     
 
 blocks:
