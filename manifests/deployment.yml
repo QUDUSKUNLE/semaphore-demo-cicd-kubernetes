@@ -44,3 +44,10 @@ spec:
           value: "$DB_PORT"
         - name: DB_SSL
           value: "$DB_SSL"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
